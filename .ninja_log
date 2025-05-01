@@ -1,0 +1,20 @@
+# ninja log v6
+621	2521	7677163088957646	CMakeFiles/Hospital_Patient_Management_system.dir/login.cpp.obj	9c050b2f702d71bf
+112	616	7677163088196974	C:/Users/youss/OneDrive/Documents/Hospital Patient Management system/Hospital_Patient_Management_system/build/Desktop_Qt_6_9_0_MinGW_64_bit-Debug/Hospital_Patient_Management_system_autogen/timestamp	ccec832c25152949
+33	106	7677164145721649	C:/Users/youss/OneDrive/Documents/Hospital Patient Management system/Hospital_Patient_Management_system/build/Desktop_Qt_6_9_0_MinGW_64_bit-Debug/CMakeFiles/cmake.verify_globs	ca1df05f566be729
+112	616	7677163088196974	Hospital_Patient_Management_system_autogen/timestamp	ccec832c25152949
+112	616	7677163088196974	C:/Users/youss/OneDrive/Documents/Hospital Patient Management system/Hospital_Patient_Management_system/build/Desktop_Qt_6_9_0_MinGW_64_bit-Debug/Hospital_Patient_Management_system_autogen/mocs_compilation.cpp	ccec832c25152949
+112	616	7677163088196974	Hospital_Patient_Management_system_autogen/mocs_compilation.cpp	ccec832c25152949
+630	2072	7677163089058754	CMakeFiles/Hospital_Patient_Management_system.dir/appointmentscheduler.cpp.obj	17c49d13658fb6f1
+639	2095	7677158390074607	CMakeFiles/Hospital_Patient_Management_system.dir/main.cpp.obj	2541af8641a0030c
+89	1274	7677164153892198	build.ninja	7edd951aad8e7739
+617	2443	7677163088915618	CMakeFiles/Hospital_Patient_Management_system.dir/faa26a8a61a06e96f372d195aff85c1a/mocs_compilation.cpp.obj	b95b69ba53803786
+619	2374	7677163088947605	CMakeFiles/Hospital_Patient_Management_system.dir/mainwindow.cpp.obj	e4dd9c15d72b793e
+624	2853	7677163088982663	CMakeFiles/Hospital_Patient_Management_system.dir/adminpage.cpp.obj	8fafba5e67e697ca
+2853	3194	7677163111283973	Hospital_Patient_Management_system.exe	9a40383bea9a55ef
+121	140	7676719203553997	CMakeFiles/clean.additional	baedbe210acaa455
+628	2628	7677163089028772	CMakeFiles/Hospital_Patient_Management_system.dir/patientrecords.cpp.obj	5cec3598f0f6dc5d
+140	150	7676719203735994	clean	577b940aee94fbd7
+626	2162	7677163089007735	CMakeFiles/Hospital_Patient_Management_system.dir/dashboard.cpp.obj	a004d4a7f42a26e9
+106	1035	7677164153892198	build.ninja	7edd951aad8e7739
+16	124	7677164155581737	C:/Users/youss/OneDrive/Documents/Hospital Patient Management system/Hospital_Patient_Management_system/build/Desktop_Qt_6_9_0_MinGW_64_bit-Debug/CMakeFiles/cmake.verify_globs	ca1df05f566be729

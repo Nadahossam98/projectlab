@@ -1,0 +1,5 @@
+john:password123:Admin
+sarah:securePass456:User
+mike:mikePass789:User
+admin:adminPassword123:Admin
+mohammed:mohammed123:User
