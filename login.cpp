@@ -1,23 +1,48 @@
-// login.cpp
+
 #include "login.h"
 #include "ui_login.h"
 #include <QMessageBox>
 #include <QFile>
 #include <QTextStream>
-#include <QRegularExpression>
+#include <QIcon>
 
 Login::Login(QWidget *parent) :
-    QMainWindow(parent),
-    ui(new Ui::Login)
+    QWidget(parent),
+    ui(new Ui::Login),
+    passwordVisible(false)
 {
     ui->setupUi(this);
-    connect(ui->loginButton, &QPushButton::clicked, this, &Login::onLoginButtonClicked);
-    connect(ui->signUpButton, &QPushButton::clicked, this, &Login::onSignUpButtonClicked);
+
+    // Password field setup
+    ui->passwordInput->setEchoMode(QLineEdit::Password);
+    ui->passwordInput->setClearButtonEnabled(true);
+
+    // Toggle action
+    QAction *toggleAction = ui->passwordInput->addAction(
+        QIcon::fromTheme("view-hidden"),
+        QLineEdit::TrailingPosition
+        );
+
+    // Connections
+    connect(ui->loginButton, &QPushButton::clicked,
+            this, &Login::onLoginButtonClicked);
+    connect(toggleAction, &QAction::triggered,
+            this, &Login::togglePasswordVisibility);
 }
 
 Login::~Login()
 {
     delete ui;
+}
+
+void Login::togglePasswordVisibility()
+{
+    passwordVisible = !passwordVisible;
+    ui->passwordInput->setEchoMode(passwordVisible ? QLineEdit::Normal : QLineEdit::Password);
+
+    // Change icon based on visibility
+QIcon icon(passwordVisible ? QIcon::fromTheme("view-visible") : QIcon::fromTheme("view-hidden"));
+    qobject_cast<QAction*>(sender())->setIcon(icon);
 }
 
 void Login::onLoginButtonClicked()
@@ -60,51 +85,6 @@ void Login::onLoginButtonClicked()
         this->close();
     } else {
         QMessageBox::warning(this, "Login Failed", "Invalid credentials");
+        ui->passwordInput->clear();
     }
-}
-
-void Login::onSignUpButtonClicked()
-{
-    QString username = ui->usernameInput->text().trimmed();
-    QString password = ui->passwordInput->text().trimmed();
-
-    if (username.isEmpty() || password.isEmpty()) {
-        QMessageBox::warning(this, "Error", "Both fields are required");
-        return;
-    }
-
-    if (!validatePassword(password)) {
-        QMessageBox::warning(this, "Weak Password", "Password must be 8+ chars with a number");
-        return;
-    }
-
-    QFile file("users.txt");
-    if (!file.open(QIODevice::ReadWrite | QIODevice::Text)) {
-        QMessageBox::critical(this, "Error", "Cannot access user database");
-        return;
-    }
-
-    QTextStream in(&file);
-    while (!in.atEnd()) {
-        QString line = in.readLine().trimmed();
-        if (line.isEmpty()) continue;
-
-        QStringList parts = line.split(":");
-        if (parts.size() >= 1 && parts[0] == username) {
-            QMessageBox::warning(this, "Exists", "Username already taken");
-            file.close();
-            return;
-        }
-    }
-
-    QTextStream out(&file);
-    out << username << ":" << password << ":User\n";
-    file.close();
-
-    QMessageBox::information(this, "Success", "Account created. Please login.");
-}
-
-bool Login::validatePassword(const QString &password)
-{
-    return password.length() >= 8 && password.contains(QRegularExpression("\\d"));
 }

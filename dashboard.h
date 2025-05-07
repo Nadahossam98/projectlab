@@ -13,25 +13,29 @@ class Dashboard : public QWidget
 
 public:
     explicit Dashboard(const QString &username, bool isAdmin, QWidget *parent = nullptr);
-    void setUserInfo(const QString &username, bool isAdmin);
-
     ~Dashboard();
 
+    void setUserInfo(const QString &username, bool isAdmin);
+
 signals:
-    void logoutRequested();
     void showPatientRecords();
+    void showAppointments();  // Add this signal
+     void showBillingPage();
+    void logoutRequested();
 
 private slots:
     void onPatientRecordsClicked();
     void onAppointmentsButtonClicked();
     void onReportsButtonClicked();
+    void onLogoutClicked();
 
 private:
     Ui::Dashboard *ui;
     bool isAdmin;
     QString currentUsername;
+
     void setupUI();
     void loadStatistics();
 };
 
-#endif
+#endif // DASHBOARD_H

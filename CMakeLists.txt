@@ -30,7 +30,9 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         adminpage.h adminpage.cpp adminpage.ui
         dashboard.h dashboard.cpp dashboard.ui
         patientrecords.h patientrecords.cpp patientrecords.ui
-        appointmentscheduler.h appointmentscheduler.cpp appointmentscheduler.ui
+
+        appointmentform.h appointmentform.cpp appointmentform.ui
+        billingpage.h billingpage.cpp billingpage.ui
 
     )
 # Define target properties for Android with Qt 6 as:

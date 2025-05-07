@@ -1,25 +1,20 @@
 #ifndef ADMINPAGE_H
 #define ADMINPAGE_H
 
-#include <QMainWindow>
-#include <QList>
+#include <QMainWindow>  // Changed back to QMainWindow
 #include <QStringList>
-#include <QCloseEvent>
 
 namespace Ui {
 class AdminPage;
 }
 
-class AdminPage : public QMainWindow
+class AdminPage : public QMainWindow  // Changed back to QMainWindow
 {
     Q_OBJECT
 
 public:
-    explicit AdminPage(QMainWindow *parent = nullptr);
+    explicit AdminPage(QWidget *parent = nullptr);
     ~AdminPage();
-
-    bool validatePassword(const QString &password);
-    bool userExists(const QString &username);
 
 signals:
     void logoutRequested();
@@ -32,12 +27,13 @@ private slots:
 private:
     Ui::AdminPage *ui;
     QList<QStringList> usersList;
-    void loadUsers();
-
+    bool dataModified;
+    void closeEvent(QCloseEvent *event) override;  // Added override
     bool saveUsersToFile();
-
-protected:
-    void closeEvent(QCloseEvent *event) override;
+    void loadUsers();
+    bool validatePassword(const QString &password);
+    bool userExists(const QString &username);
+    bool isCurrentUserAdmin() const;
 };
 
-#endif
+#endif // ADMINPAGE_H
