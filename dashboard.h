@@ -2,6 +2,11 @@
 #define DASHBOARD_H
 
 #include <QWidget>
+#include <QLabel>
+#include <QPushButton>
+#include <QGroupBox>
+
+class PatientRecords; // Forward declaration
 
 namespace Ui {
 class Dashboard;
@@ -12,30 +17,51 @@ class Dashboard : public QWidget
     Q_OBJECT
 
 public:
-    explicit Dashboard(const QString &username, bool isAdmin, QWidget *parent = nullptr);
+    explicit Dashboard(QWidget *parent = nullptr);
     ~Dashboard();
 
-    void setUserInfo(const QString &username, bool isAdmin);
+    void setUserInfo(const QString &username, const QString &role);
+    void connectPatientRecords(PatientRecords* patientRecords);
+
+public slots:
+    void updateAppointmentCount();
+    void updatePatientCount(int count);
 
 signals:
-    void showPatientRecords();
-    void showAppointments();  // Add this signal
-     void showBillingPage();
     void logoutRequested();
+    void showPatientRecords();
+    void showAppointmentForm();
+    void showBillingPage();
+    void showReportsPage();
 
 private slots:
-    void onPatientRecordsClicked();
-    void onAppointmentsButtonClicked();
-    void onReportsButtonClicked();
-    void onLogoutClicked();
+    void onChangeProfilePicture();
 
 private:
     Ui::Dashboard *ui;
-    bool isAdmin;
-    QString currentUsername;
 
-    void setupUI();
-    void loadStatistics();
+    QLabel *m_profilePicLabel;
+    QLabel *m_welcomeLabel;
+
+    QGroupBox *m_patientsCard;
+    QGroupBox *m_appointmentsCard;
+    QGroupBox *m_billsCard;
+    QGroupBox *m_reportsCard;
+    int m_patientsCount = 0;
+    int m_appointmentsCount = 0;
+    int m_billsCount = 0;
+    int m_reportsCount = 0;
+
+    // Navigation Buttons
+    QPushButton *m_patientsButton;
+    QPushButton *m_appointmentsButton;
+    QPushButton *m_billingButton;
+    QPushButton *m_reportsButton;
+    QPushButton *m_logoutButton;
+    QPushButton *m_changeProfileButton;
+    void on_dashboardButton_clicked() ;
+    void setupConnections();
+    void loadProfilePicture(const QString &username);
 };
 
 #endif // DASHBOARD_H

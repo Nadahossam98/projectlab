@@ -12,7 +12,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets LinguistTools)
 find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets LinguistTools)
 
-set(TS_FILES Hospital_Patient_Management_system_en_GB.ts)
+set(TS_FILES Hospital_Patient_Management_system_en_GB.ts
+  Hospital_Patient_Management_system_en_GB.ts)
 
 set(PROJECT_SOURCES
         main.cpp
@@ -31,9 +32,10 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         dashboard.h dashboard.cpp dashboard.ui
         patientrecords.h patientrecords.cpp patientrecords.ui
 
-        appointmentform.h appointmentform.cpp appointmentform.ui
-        billingpage.h billingpage.cpp billingpage.ui
+        adminpage.cpp adminpage.h adminpage.ui AppointmentForm.cpp AppointmentForm.h AppointmentForm.ui    billingpage.cpp billingpage.h billingpage.ui build.ninja cmake_install.cmake CMakeCache.txt CMakeCache.txt.prev CMakeLists.txt CMakeLists.txt.user dashboard.cpp dashboard.h dashboard.ui databasemanager.cpp databasemanager.h   Hospital_Patient_Management_system.exe login.cpp login.h login.ui main.cpp mainwindow.cpp mainwindow.h mainwindow.ui patientrecords.cpp patientrecords.h patientrecords.ui qtcsettings.cmake
+        reportspage.h reportspage.cpp reportspage.ui
 
+   
     )
 # Define target properties for Android with Qt 6 as:
 #    set_property(TARGET Hospital_Patient_Management_system APPEND PROPERTY QT_ANDROID_PACKAGE_SOURCE_DIR

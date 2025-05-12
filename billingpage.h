@@ -2,7 +2,7 @@
 #define BILLINGPAGE_H
 
 #include <QWidget>
-#include <QMessageBox>
+#include <QTableWidgetItem>
 
 namespace Ui {
 class BillingPage;
@@ -27,11 +27,12 @@ private slots:
 
 private:
     Ui::BillingPage *ui;
-    void setupConnections();
+
     void setupTable();
-    void clearForm();
+    void setupConnections();
     bool validatePaymentDetails();
     void updateBillStatus(int row, const QString &status);
+    void clearForm();
 };
 
 #endif // BILLINGPAGE_H

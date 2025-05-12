@@ -1,60 +1,55 @@
-
 #include "login.h"
 #include "ui_login.h"
+
 #include <QMessageBox>
 #include <QFile>
 #include <QTextStream>
-#include <QIcon>
 
-Login::Login(QWidget *parent) :
-    QWidget(parent),
-    ui(new Ui::Login),
-    passwordVisible(false)
+/*
+ * Login class implements the login window for the Hospital Management System.
+ * It handles user input, validates credentials, and emits a signal on successful login.
+ */
+Login::Login(QWidget *parent)
+    : QWidget(parent),
+    ui(new Ui::Login)
 {
     ui->setupUi(this);
+    setWindowTitle("Hospital Management System - Login");
 
-    // Password field setup
+    // Hide password input for security
     ui->passwordInput->setEchoMode(QLineEdit::Password);
-    ui->passwordInput->setClearButtonEnabled(true);
 
-    // Toggle action
-    QAction *toggleAction = ui->passwordInput->addAction(
-        QIcon::fromTheme("view-hidden"),
-        QLineEdit::TrailingPosition
-        );
-
-    // Connections
+    // Connect login button and Enter key in password field to the attemptLogin slot
     connect(ui->loginButton, &QPushButton::clicked,
-            this, &Login::onLoginButtonClicked);
-    connect(toggleAction, &QAction::triggered,
-            this, &Login::togglePasswordVisibility);
+            this, &Login::attemptLogin);
+    connect(ui->passwordInput, &QLineEdit::returnPressed,
+            this, &Login::attemptLogin);
 }
 
+// Destructor: cleans up the UI
 Login::~Login()
 {
     delete ui;
 }
 
-void Login::togglePasswordVisibility()
+/*
+ * Attempts to log in with the entered username and password.
+ * Checks for empty fields, reads the users.txt file, and validates credentials.
+ * Emits loginSuccess(username, role) if successful, otherwise shows an error.
+ */
+void Login::attemptLogin()
 {
-    passwordVisible = !passwordVisible;
-    ui->passwordInput->setEchoMode(passwordVisible ? QLineEdit::Normal : QLineEdit::Password);
+    // Get input values and trim whitespace
+    const QString username = ui->usernameInput->text().trimmed();
+    const QString password = ui->passwordInput->text().trimmed();
 
-    // Change icon based on visibility
-QIcon icon(passwordVisible ? QIcon::fromTheme("view-visible") : QIcon::fromTheme("view-hidden"));
-    qobject_cast<QAction*>(sender())->setIcon(icon);
-}
-
-void Login::onLoginButtonClicked()
-{
-    QString username = ui->usernameInput->text().trimmed();
-    QString password = ui->passwordInput->text().trimmed();
-
+    // Check for empty fields
     if (username.isEmpty() || password.isEmpty()) {
         QMessageBox::warning(this, "Error", "Both fields are required");
         return;
     }
 
+    // Open the users.txt file for reading
     QFile file("users.txt");
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
         QMessageBox::critical(this, "Error", "Cannot access user database");
@@ -63,28 +58,27 @@ void Login::onLoginButtonClicked()
 
     QTextStream in(&file);
     bool found = false;
-    bool isAdmin = false;
+    QString role = "User";
 
+    // Read each line of the file and check for matching credentials
     while (!in.atEnd()) {
-        QString line = in.readLine().trimmed();
+        const QString line = in.readLine().trimmed();
         if (line.isEmpty()) continue;
 
-        QStringList parts = line.split(":");
+        // Each line format: username:password:role
+        const QStringList parts = line.split(":");
         if (parts.size() >= 2 && parts[0] == username && parts[1] == password) {
             found = true;
-            if (parts.size() >= 3 && parts[2].trimmed() == "Admin") {
-                isAdmin = true;
-            }
+            if (parts.size() >= 3) role = parts[2].trimmed();
             break;
         }
     }
     file.close();
 
+    // If found, emit success signal; otherwise, show error
     if (found) {
-        emit loginSuccess(username, isAdmin);
-        this->close();
+        emit loginSuccess(username, role);
     } else {
-        QMessageBox::warning(this, "Login Failed", "Invalid credentials");
-        ui->passwordInput->clear();
+        QMessageBox::warning(this, "Error", "Invalid username or password");
     }
 }

@@ -4,128 +4,234 @@
 #include "dashboard.h"
 #include "adminpage.h"
 #include "patientrecords.h"
-#include "appointmentform.h"
+#include "AppointmentForm.h"
 #include "billingpage.h"
+#include "reportspage.h"
+
 #include <QStackedWidget>
+#include <QDir>
 #include <QDebug>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent),
     ui(new Ui::MainWindow),
-    m_isAdmin(false),
-    m_currentUsername("")
-{
-    ui->setupUi(this);
 
-    // Create stacked widget for page management
+    loginPage(nullptr),
+    dashboardPage(nullptr),
+    adminPage(nullptr),
+    patientRecordsPage(nullptr),
+    appointmentForm(nullptr),
+    billingPage(nullptr),
+    reportsPage(nullptr)
+{
+    // Create necessary directories
+    QDir().mkdir("profile_pics");
+    QDir().mkdir("data");
+
+    ui->setupUi(this);
+    setWindowTitle("Hospital Management System");
+    setMinimumSize(800, 610);
+    setMaximumSize(800, 610);
+
+    // Initialize stacked widget
     stackedWidget = new QStackedWidget(this);
     setCentralWidget(stackedWidget);
 
-    // Initialize all application pages
+    // Create all pages
     initializePages();
-
-    // Set up all signal-slot connections
     setupConnections();
 
     // Start with login page
     showLogin();
+
+    qDebug() << "MainWindow initialized successfully";
+}
+
+MainWindow::~MainWindow()
+{
+    qDebug() << "MainWindow destructor";
+    // Let Qt handle deletion of child widgets through parent-child hierarchy
+    delete ui;
 }
 
 void MainWindow::initializePages()
 {
+    qDebug() << "Initializing pages...";
+    // Create pages with proper parent hierarchy
     loginPage = new Login(stackedWidget);
-    dashboardPage = new Dashboard("", false, stackedWidget);
+    dashboardPage = new Dashboard(stackedWidget);
     adminPage = new AdminPage(stackedWidget);
     patientRecordsPage = new PatientRecords(stackedWidget);
-    appointmentForm = new appointmentform(stackedWidget);
-    billingPage = new BillingPage(stackedWidget);
+    reportsPage = new ReportsPage(stackedWidget);
 
-    // Add pages to stacked widget in logical order
+    // Add pages to stacked widget
     stackedWidget->addWidget(loginPage);
     stackedWidget->addWidget(dashboardPage);
     stackedWidget->addWidget(adminPage);
     stackedWidget->addWidget(patientRecordsPage);
-    stackedWidget->addWidget(appointmentForm);
-    stackedWidget->addWidget(billingPage);
+    stackedWidget->addWidget(reportsPage);
+
+    qDebug() << "All pages initialized";
 }
 
 void MainWindow::setupConnections()
 {
+    qDebug() << "Setting up connections...";
+
     // Login connections
-    connect(loginPage, &Login::loginSuccess,
-            this, &MainWindow::showUserInterface);
+    if (!connect(loginPage, &Login::loginSuccess,
+                 this, &MainWindow::showUserInterface)) {
+        qWarning() << "Failed to connect loginSuccess signal";
+    }
 
     // Dashboard connections
-    connect(dashboardPage, &Dashboard::logoutRequested,
-            this, &MainWindow::showLogin);
-    connect(dashboardPage, &Dashboard::showPatientRecords,
-            this, &MainWindow::showPatientRecords);
-    connect(dashboardPage, &Dashboard::showAppointments,
-            this, &MainWindow::showAppointmentForm);
-    connect(dashboardPage, &Dashboard::showBillingPage,
-            this, &MainWindow::showBillingPage);
+    if (!connect(dashboardPage, &Dashboard::logoutRequested,
+                 this, &MainWindow::showLogin)) {
+        qWarning() << "Failed to connect logoutRequested signal";
+    }
 
-    // Admin page connection
-    connect(adminPage, &AdminPage::logoutRequested,
-            this, &MainWindow::showLogin);
+    if (!connect(dashboardPage, &Dashboard::showPatientRecords,
+                 this, &MainWindow::showPatientRecords)) {
+        qWarning() << "Failed to connect showPatientRecords signal";
+    }
 
-    // Patient records connection
-    connect(patientRecordsPage, &PatientRecords::backToDashboard,
-            this, &MainWindow::backToDashboard);
+    if (!connect(dashboardPage, &Dashboard::showAppointmentForm,
+                 this, &MainWindow::showAppointmentForm)) {
+        qWarning() << "Failed to connect showAppointmentForm signal";
+    }
 
-    // Appointment form connections
-    connect(appointmentForm, &appointmentform::appointmentScheduled,
-            this, &MainWindow::backToDashboard);
-    connect(appointmentForm, &appointmentform::cancelled,
-            this, &MainWindow::backToDashboard);
+    if (!connect(dashboardPage, &Dashboard::showBillingPage,
+                 this, &MainWindow::showBillingPage)) {
+        qWarning() << "Failed to connect showBillingPage signal";
+    }
 
-    // Billing page connection
-    connect(billingPage, &BillingPage::backToDashboard,
-            this, &MainWindow::backToDashboard);
-}
+    if (!connect(dashboardPage, &Dashboard::showReportsPage,
+                 this, &MainWindow::showReportsPage)) {
+        qWarning() << "Failed to connect showReportsPage signal";
+    }
 
-void MainWindow::showBillingPage()
-{
-    stackedWidget->setCurrentWidget(billingPage);
+    // Admin page connections
+    if (!connect(adminPage, &AdminPage::logoutRequested,
+                 this, &MainWindow::showLogin)) {
+        qWarning() << "Failed to connect admin logoutRequested signal";
+    }
+
+    qDebug() << "All connections established";
 }
 
 void MainWindow::showLogin()
 {
-    stackedWidget->setCurrentWidget(loginPage);
-    m_currentUsername.clear();
-    m_isAdmin = false;
+    qDebug() << "Showing login page";
+    if (stackedWidget && loginPage) {
+        stackedWidget->setCurrentWidget(loginPage);
+        m_currentUsername.clear();
+        m_currentUserRole.clear();
+    } else {
+        qCritical() << "Stacked widget or login page not initialized";
+    }
 }
 
-void MainWindow::showUserInterface(const QString &username, bool isAdmin)
-{
-    m_currentUsername = username;
-    m_isAdmin = isAdmin;
 
-    if (isAdmin) {
-        stackedWidget->setCurrentWidget(adminPage);
+void MainWindow::showUserInterface(const QString &username, const QString &role)
+{
+    qDebug() << "Showing user interface for:" << username << "role:" << role;
+    m_currentUsername = username;
+    m_currentUserRole = role;
+
+    if (role == "Admin") {
+        if (adminPage) {
+            stackedWidget->setCurrentWidget(adminPage);
+        } else {
+            qCritical() << "Admin page not initialized";
+        }
     } else {
-        dashboardPage->setUserInfo(username, isAdmin);
-        stackedWidget->setCurrentWidget(dashboardPage);
+        if (dashboardPage) {
+            dashboardPage->setUserInfo(username, role);
+            stackedWidget->setCurrentWidget(dashboardPage);
+        } else {
+            qCritical() << "Dashboard page not initialized";
+        }
     }
 }
 
 void MainWindow::showPatientRecords()
 {
+    qDebug() << "Showing patient records";
+    if (!patientRecordsPage) {
+        patientRecordsPage = new PatientRecords(stackedWidget);
+        stackedWidget->addWidget(patientRecordsPage);
+    }
+
+    // Always set up these connections and access level
+    if (!connect(patientRecordsPage, &PatientRecords::backToDashboard,
+                 this, &MainWindow::backToDashboard, Qt::UniqueConnection)) {
+        qWarning() << "Failed to connect backToDashboard signal";
+    }
+
+    patientRecordsPage->setAccessLevel(m_currentUserRole);
     stackedWidget->setCurrentWidget(patientRecordsPage);
 }
-
 void MainWindow::showAppointmentForm()
 {
-    stackedWidget->setCurrentWidget(appointmentForm);
-    appointmentForm->resetForm();
+    qDebug() << "Showing appointment form";
+    if (!appointmentForm) {
+        qDebug() << "Creating new AppointmentForm instance";
+        appointmentForm = new AppointmentForm(stackedWidget);
+        stackedWidget->addWidget(appointmentForm);
+
+        if (!connect(appointmentForm, &AppointmentForm::appointmentScheduled,
+                     dashboardPage, &Dashboard::updateAppointmentCount)) {
+            qWarning() << "Failed to connect appointmentScheduled signal";
+        }
+
+        if (!connect(appointmentForm, &AppointmentForm::finished,
+                     this, &MainWindow::backToDashboard)) {
+            qWarning() << "Failed to connect finished signal";
+        }
+    }
+    if (appointmentForm) {
+        appointmentForm->resetForm();
+        stackedWidget->setCurrentWidget(appointmentForm);
+    } else {
+        qCritical() << "Appointment form creation failed";
+    }
+}
+
+void MainWindow::showBillingPage()
+{
+    qDebug() << "Showing billing page";
+    if (!billingPage) {
+        billingPage = new BillingPage(stackedWidget);
+        stackedWidget->addWidget(billingPage);
+
+        if (!connect(billingPage, &BillingPage::backToDashboard,
+                     this, &MainWindow::backToDashboard)) {
+            qWarning() << "Failed to connect backToDashboard signal";
+        }
+    }
+    stackedWidget->setCurrentWidget(billingPage);
+}
+
+void MainWindow::showReportsPage()
+{
+    qDebug() << "Showing reports page";
+    if (!reportsPage) {
+        reportsPage = new ReportsPage(stackedWidget);
+        stackedWidget->addWidget(reportsPage);
+    }
+
+    // Always set up this connection
+    if (!connect(reportsPage, &ReportsPage::backToDashboard,
+                 this, &MainWindow::backToDashboard, Qt::UniqueConnection)) {
+        qWarning() << "Failed to connect backToDashboard signal";
+    }
+
+    reportsPage->generateReports();
+    stackedWidget->setCurrentWidget(reportsPage);
 }
 
 void MainWindow::backToDashboard()
 {
-    showUserInterface(m_currentUsername, m_isAdmin);
-}
-
-MainWindow::~MainWindow()
-{
-    delete ui;
+    qDebug() << "Returning to dashboard";
+    showUserInterface(m_currentUsername, m_currentUserRole);
 }

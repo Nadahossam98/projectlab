@@ -1,4 +1,0 @@
-john:password123:Admin
-admin:adminPassword123:Admin
-youssef:youssef123:Receptionist
-doctor1:doctor123:Doctor

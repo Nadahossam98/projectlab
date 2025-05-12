@@ -1,19 +1,22 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
-#include <QMainWindow>
-#include <QStackedWidget>
 
-// Forward declarations
-namespace Ui {
-class MainWindow;
-}
+#include <QMainWindow>
+#include <qstackedwidget.h>
+
+
 class Login;
 class Dashboard;
 class AdminPage;
 class PatientRecords;
-class appointmentform;
+class AppointmentForm;
 class BillingPage;
+class ReportsPage;
+
+namespace Ui {
+class MainWindow;
+}
 
 class MainWindow : public QMainWindow
 {
@@ -23,32 +26,36 @@ public:
     explicit MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
 
+
+
 private slots:
     void showLogin();
-    void showUserInterface(const QString &username, bool isAdmin);
+    void showUserInterface(const QString &username, const QString &role);
     void showPatientRecords();
     void showAppointmentForm();
     void showBillingPage();
+    void showReportsPage();
     void backToDashboard();
 
 private:
+    void initializePages();
+    void setupConnections();
+
     Ui::MainWindow *ui;
+
     QStackedWidget *stackedWidget;
 
-    // Page widgets
+    // Pages
     Login *loginPage;
     Dashboard *dashboardPage;
     AdminPage *adminPage;
     PatientRecords *patientRecordsPage;
-    appointmentform *appointmentForm;
+    AppointmentForm *appointmentForm;
     BillingPage *billingPage;
+    ReportsPage *reportsPage;
 
-    // User state
     QString m_currentUsername;
-    bool m_isAdmin;
-
-    void initializePages();
-    void setupConnections();
+    QString m_currentUserRole;
 };
 
 #endif // MAINWINDOW_H

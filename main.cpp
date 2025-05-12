@@ -3,9 +3,11 @@
 #include <QApplication>
 #include <QLocale>
 #include <QTranslator>
+#include <qdir.h>
 
 int main(int argc, char *argv[])
 {
+    QDir().mkdir("profile_pics");
     QApplication a(argc, argv);
 
     QTranslator translator;

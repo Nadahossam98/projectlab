@@ -2,10 +2,9 @@
 #define LOGIN_H
 
 #include <QWidget>
+#include <QString>
 
-namespace Ui {
-class Login;
-}
+namespace Ui { class Login; }
 
 class Login : public QWidget
 {
@@ -15,15 +14,11 @@ public:
     explicit Login(QWidget *parent = nullptr);
     ~Login();
 
-    // Add this if missing
-    bool passwordVisible = false;
-
 signals:
-    void loginSuccess(const QString &username, bool isAdmin);
+    void loginSuccess(const QString &username, const QString &role);
 
 private slots:
-    void onLoginButtonClicked();
-    void togglePasswordVisibility();
+    void attemptLogin();
 
 private:
     Ui::Login *ui;

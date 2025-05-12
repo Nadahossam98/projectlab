@@ -1,12 +1,14 @@
 #ifndef PATIENTRECORDS_H
 #define PATIENTRECORDS_H
 
+
 #include <QWidget>
 #include <QStandardItemModel>
+#include <QSortFilterProxyModel>
 
-QT_BEGIN_NAMESPACE
-namespace Ui { class PatientRecords; }
-QT_END_NAMESPACE
+namespace Ui {
+class PatientRecords;
+}
 
 class PatientRecords : public QWidget
 {
@@ -16,33 +18,37 @@ public:
     explicit PatientRecords(QWidget *parent = nullptr);
     ~PatientRecords();
 
+    void setAccessLevel(const QString &role);
+    int getPatientCount() const;
+
+
 signals:
     void backToDashboard();
+    void patientCountChanged(int newCount);
+
 
 public slots:
-    void onBackToDashboardClicked();
+    void refreshData();
 
 private slots:
     void onSearchClicked();
     void onAddClicked();
     void onEditClicked();
     void onDeleteClicked();
-    void saveToFile();
-    void loadFromFile();
+    void onBackClicked();
 
 private:
     Ui::PatientRecords *ui;
     QStandardItemModel *model;
-    QString currentFilePath;
+    QSortFilterProxyModel *proxyModel;
+    QString currentUserRole;
 
     void setupTableView();
-    void setupConnections();
-    void loadSampleData();
-    void addPatient(const QString &id,
-                    const QString &name,
-                    const QString &age,
-                    const QString &medicalHistory,
-                    const QString &doctor);
+    void loadDataFromFile();
+    void saveDataToFile();
+    bool validatePatientData(int row);
+    void showErrorMessage(const QString &message);
+    QString getDataFilePath() const;
 };
 
 #endif // PATIENTRECORDS_H

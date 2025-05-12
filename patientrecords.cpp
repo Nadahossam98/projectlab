@@ -1,22 +1,41 @@
 #include "patientrecords.h"
 #include "ui_patientrecords.h"
-#include <QMessageBox>
-#include <QStandardItem>
+
+#include <QStandardItemModel>
+#include <QSortFilterProxyModel>
 #include <QFile>
 #include <QTextStream>
-#include <QFileDialog>
-#include <QPushButton>
+#include <QDir>
+#include <QDate>
+#include <QMessageBox>
+#include <QHeaderView>
+#include <QRegularExpression>
 
-PatientRecords::PatientRecords(QWidget *parent) :
-    QWidget(parent),
+PatientRecords::PatientRecords(QWidget *parent)
+    : QWidget(parent),
     ui(new Ui::PatientRecords),
-    model(new QStandardItemModel(this))
+    model(new QStandardItemModel(this)),
+    proxyModel(new QSortFilterProxyModel(this)),
+    currentUserRole("")
 {
     ui->setupUi(this);
+    this->setFixedSize(800, 600);
 
+    // Set up models and table view
+    proxyModel->setSourceModel(model);
+    ui->patientsTableView->setModel(proxyModel);
     setupTableView();
-    setupConnections();
-    loadSampleData();
+    loadDataFromFile();
+
+    // Set up filter options for searching
+    ui->filterComboBox->addItems({"Name", "Doctor", "Medical Condition"});
+
+    // Connect buttons to their respective slots
+    connect(ui->searchButton, &QPushButton::clicked, this, &PatientRecords::onSearchClicked);
+    connect(ui->addButton, &QPushButton::clicked, this, &PatientRecords::onAddClicked);
+    connect(ui->editButton, &QPushButton::clicked, this, &PatientRecords::onEditClicked);
+    connect(ui->deleteButton, &QPushButton::clicked, this, &PatientRecords::onDeleteClicked);
+    connect(ui->backButton, &QPushButton::clicked, this, &PatientRecords::onBackClicked);
 }
 
 PatientRecords::~PatientRecords()
@@ -24,187 +43,221 @@ PatientRecords::~PatientRecords()
     delete ui;
 }
 
+void PatientRecords::setAccessLevel(const QString &role)
+{
+    currentUserRole = role;
+    bool canEdit = (role == "Admin" || role == "Doctor");
+    bool canDelete = (role == "Admin");
+
+    ui->addButton->setEnabled(canEdit);
+    ui->editButton->setEnabled(canEdit);
+    ui->deleteButton->setEnabled(canDelete);
+}
+
+int PatientRecords::getPatientCount() const
+{
+    return model->rowCount();
+}
+
 void PatientRecords::setupTableView()
 {
-    model->setHorizontalHeaderLabels({"ID", "Name", "Age", "Medical History", "Doctor Assigned"});
-    ui->patientsTableView->setModel(model);
-    ui->patientsTableView->setSelectionMode(QAbstractItemView::SingleSelection);
-    ui->patientsTableView->setSelectionBehavior(QAbstractItemView::SelectRows);
-    ui->patientsTableView->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    model->setHorizontalHeaderLabels({"ID", "Name", "Age", "Medical History", "Doctor", "Last Visit"});
+
+    ui->patientsTableView->horizontalHeader()->setSectionResizeMode(QHeaderView::Interactive);
     ui->patientsTableView->horizontalHeader()->setStretchLastSection(true);
+
+    ui->patientsTableView->setColumnWidth(0, 60);  // ID
+    ui->patientsTableView->setColumnWidth(1, 150); // Name
+    ui->patientsTableView->setColumnWidth(2, 60);  // Age
+    ui->patientsTableView->setColumnWidth(3, 200); // Medical History
+    ui->patientsTableView->setColumnWidth(4, 150); // Doctor
 }
 
-void PatientRecords::setupConnections()
+QString PatientRecords::getDataFilePath() const
 {
-    ui->filterComboBox->addItems({"Name", "Doctor", "Medical History"});
-
-    connect(ui->searchButton, &QPushButton::clicked, this, &PatientRecords::onSearchClicked);
-    connect(ui->addButton, &QPushButton::clicked, this, &PatientRecords::onAddClicked);
-    connect(ui->editButton, &QPushButton::clicked, this, &PatientRecords::onEditClicked);
-    connect(ui->deleteButton, &QPushButton::clicked, this, &PatientRecords::onDeleteClicked);
-    connect(ui->backToDashboard, &QPushButton::clicked, this, &PatientRecords::onBackToDashboardClicked);
-
-    // Only connect save/load buttons if they exist in the UI
-    if (ui->saveButton) {
-        connect(ui->saveButton, &QPushButton::clicked, this, &PatientRecords::saveToFile);
-    }
-    if (ui->loadButton) {
-        connect(ui->loadButton, &QPushButton::clicked, this, &PatientRecords::loadFromFile);
-    }
+    return QDir::homePath() + "/patient_records.csv";
 }
 
-void PatientRecords::loadSampleData()
+void PatientRecords::loadDataFromFile()
 {
     model->clear();
     setupTableView();
 
-    addPatient("1", "John Doe", "35", "Hypertension", "Dr. Smith");
-    addPatient("2", "Jane Smith", "28", "Diabetes", "Dr. Johnson");
-    addPatient("3", "Robert Brown", "45", "Asthma", "Dr. Williams");
+    QFile file(getDataFilePath());
+    if (!file.exists()) {
+        // Create default file with two sample patients
+        QList<QStandardItem*> row1;
+        row1 << new QStandardItem("1001")
+             << new QStandardItem("John Doe")
+             << new QStandardItem("35")
+             << new QStandardItem("Hypertension, Allergies: Penicillin")
+             << new QStandardItem("Dr. Smith")
+             << new QStandardItem(QDate::currentDate().toString("yyyy-MM-dd"));
+        model->appendRow(row1);
+
+        QList<QStandardItem*> row2;
+        row2 << new QStandardItem("1002")
+             << new QStandardItem("Jane Smith")
+             << new QStandardItem("28")
+             << new QStandardItem("Type 2 Diabetes")
+             << new QStandardItem("Dr. Johnson")
+             << new QStandardItem(QDate::currentDate().toString("yyyy-MM-dd"));
+        model->appendRow(row2);
+
+        saveDataToFile();
+        emit patientCountChanged(model->rowCount());
+        return;
+    }
+
+    if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        QTextStream in(&file);
+        while (!in.atEnd()) {
+            QString line = in.readLine();
+            QStringList fields = line.split(",");
+            if (fields.size() >= 6) {
+                QList<QStandardItem*> row;
+                for (int i = 0; i < 6; i++)
+                    row << new QStandardItem(fields[i].trimmed());
+                model->appendRow(row);
+            }
+        }
+        file.close();
+        emit patientCountChanged(model->rowCount());
+    } else {
+        showErrorMessage("Could not open patient records file for reading");
+    }
 }
 
-void PatientRecords::addPatient(const QString &id, const QString &name,
-                                const QString &age, const QString &medicalHistory,
-                                const QString &doctor)
+void PatientRecords::saveDataToFile()
 {
-    QList<QStandardItem*> row;
-    row << new QStandardItem(id);
-    row << new QStandardItem(name);
-    row << new QStandardItem(age);
-    row << new QStandardItem(medicalHistory);
-    row << new QStandardItem(doctor);
-    model->appendRow(row);
+    QFile file(getDataFilePath());
+    if (file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        QTextStream out(&file);
+        for (int row = 0; row < model->rowCount(); ++row) {
+            QStringList rowData;
+            for (int col = 0; col < model->columnCount(); ++col)
+                rowData << model->item(row, col)->text();
+            out << rowData.join(",") << "\n";
+        }
+        file.close();
+    } else {
+        showErrorMessage("Could not save patient records to file");
+    }
+}
+
+bool PatientRecords::validatePatientData(int row)
+{
+    if (row < 0 || row >= model->rowCount()) return false;
+
+    QString name = model->item(row, 1)->text().trimmed();
+    if (name.isEmpty()) {
+        showErrorMessage("Patient name cannot be empty");
+        return false;
+    }
+
+    bool ok;
+    int age = model->item(row, 2)->text().toInt(&ok);
+    if (!ok || age < 0 || age > 120) {
+        showErrorMessage("Please enter a valid age (0-120)");
+        return false;
+    }
+
+    return true;
+}
+
+void PatientRecords::showErrorMessage(const QString &message)
+{
+    QMessageBox::critical(this, "Input Error", message);
+}
+
+void PatientRecords::refreshData()
+{
+    loadDataFromFile();
 }
 
 void PatientRecords::onSearchClicked()
 {
-    QString searchText = ui->searchLineEdit->text().trimmed().toLower();
+    QString searchText = ui->searchLineEdit->text().trimmed();
+    if (searchText.isEmpty()) {
+        proxyModel->setFilterRegularExpression(QRegularExpression());
+        return;
+    }
+
     QString filter = ui->filterComboBox->currentText();
+    int column = -1;
+    if (filter == "Name") column = 1;
+    else if (filter == "Doctor") column = 4;
+    else if (filter == "Medical Condition") column = 3;
 
-    for (int row = 0; row < model->rowCount(); ++row) {
-        bool match = false;
-        int column = -1;
-
-        if (filter == "Name") column = 1;
-        else if (filter == "Doctor") column = 4;
-        else if (filter == "Medical History") column = 3;
-
-        if (column >= 0) {
-            QString cellText = model->item(row, column)->text().toLower();
-            match = cellText.contains(searchText);
-        }
-
-        ui->patientsTableView->setRowHidden(row, !match);
+    if (column >= 0) {
+        proxyModel->setFilterKeyColumn(column);
+        proxyModel->setFilterCaseSensitivity(Qt::CaseInsensitive);
+        proxyModel->setFilterRegularExpression(QRegularExpression(searchText, QRegularExpression::CaseInsensitiveOption));
     }
 }
 
 void PatientRecords::onAddClicked()
 {
-    QString newId = QString::number(model->rowCount() + 1);
-    addPatient(newId, "New Patient", "0", "", "");
+    int maxId = 1000;
+    for (int row = 0; row < model->rowCount(); ++row) {
+        int currentId = model->item(row, 0)->text().toInt();
+        if (currentId > maxId)
+            maxId = currentId;
+    }
+
+    QList<QStandardItem*> newRow;
+    newRow << new QStandardItem(QString::number(maxId + 1))
+           << new QStandardItem("New Patient")
+           << new QStandardItem("0")
+           << new QStandardItem("")
+           << new QStandardItem("")
+           << new QStandardItem(QDate::currentDate().toString("yyyy-MM-dd"));
+    model->appendRow(newRow);
+    saveDataToFile();
+    emit patientCountChanged(model->rowCount());
 
     QModelIndex index = model->index(model->rowCount() - 1, 1);
-    ui->patientsTableView->edit(index);
+    ui->patientsTableView->setCurrentIndex(proxyModel->mapFromSource(index));
+    ui->patientsTableView->edit(proxyModel->mapFromSource(index));
 }
 
 void PatientRecords::onEditClicked()
 {
-    QModelIndexList selected = ui->patientsTableView->selectionModel()->selectedRows();
-    if (!selected.isEmpty()) {
-        ui->patientsTableView->edit(selected.first());
-    } else {
-        QMessageBox::warning(this, "No Selection", "Please select a patient to edit.");
+    QModelIndex proxyIndex = ui->patientsTableView->currentIndex();
+    if (!proxyIndex.isValid()) {
+        showErrorMessage("Please select a patient to edit");
+        return;
+    }
+
+    QModelIndex index = proxyModel->mapToSource(proxyIndex);
+    if (validatePatientData(index.row())) {
+        ui->patientsTableView->edit(proxyIndex);
+        saveDataToFile();
     }
 }
 
 void PatientRecords::onDeleteClicked()
 {
-    QModelIndexList selected = ui->patientsTableView->selectionModel()->selectedRows();
-    if (!selected.isEmpty()) {
-        int row = selected.first().row();
-        QString patientName = model->item(row, 1)->text();
+    QModelIndex proxyIndex = ui->patientsTableView->currentIndex();
+    if (!proxyIndex.isValid()) {
+        showErrorMessage("Please select a patient to delete");
+        return;
+    }
 
-        if (QMessageBox::question(this, "Confirm Delete",
-                                  QString("Delete patient %1?").arg(patientName),
-                                  QMessageBox::Yes|QMessageBox::No) == QMessageBox::Yes) {
-            model->removeRow(row);
+    QModelIndex index = proxyModel->mapToSource(proxyIndex);
+    QString patientName = model->item(index.row(), 1)->text();
+    QString patientId = model->item(index.row(), 0)->text();
 
-            // Re-number remaining patients
-            for (int i = 0; i < model->rowCount(); ++i) {
-                model->item(i, 0)->setText(QString::number(i + 1));
-            }
-        }
-    } else {
-        QMessageBox::warning(this, "No Selection", "Please select a patient to delete.");
+    if (QMessageBox::question(this, "Confirm Delete",
+                              QString("Are you sure you want to delete patient:\n\n%1 (ID: %2)?").arg(patientName).arg(patientId),
+                              QMessageBox::Yes|QMessageBox::No) == QMessageBox::Yes) {
+        model->removeRow(index.row());
+        saveDataToFile();
+        emit patientCountChanged(model->rowCount());
     }
 }
 
-void PatientRecords::onBackToDashboardClicked()
+void PatientRecords::onBackClicked()
 {
     emit backToDashboard();
-}
-
-void PatientRecords::saveToFile()
-{
-    QString fileName = QFileDialog::getSaveFileName(this, "Save Patient Records", "", "CSV Files (*.csv)");
-    if (fileName.isEmpty()) return;
-
-    QFile file(fileName);
-    if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
-        QMessageBox::warning(this, "Error", "Could not save file");
-        return;
-    }
-
-    QTextStream out(&file);
-
-    // Write headers
-    for (int col = 0; col < model->columnCount(); ++col) {
-        out << model->headerData(col, Qt::Horizontal).toString();
-        if (col < model->columnCount() - 1) out << ",";
-    }
-    out << "\n";
-
-    // Write data
-    for (int row = 0; row < model->rowCount(); ++row) {
-        for (int col = 0; col < model->columnCount(); ++col) {
-            out << model->item(row, col)->text();
-            if (col < model->columnCount() - 1) out << ",";
-        }
-        out << "\n";
-    }
-
-    file.close();
-    currentFilePath = fileName;
-}
-
-void PatientRecords::loadFromFile()
-{
-    QString fileName = QFileDialog::getOpenFileName(this, "Load Patient Records", "", "CSV Files (*.csv)");
-    if (fileName.isEmpty()) return;
-
-    QFile file(fileName);
-    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        QMessageBox::warning(this, "Error", "Could not open file");
-        return;
-    }
-
-    model->clear();
-    setupTableView();
-
-    QTextStream in(&file);
-
-    // Skip header line
-    in.readLine();
-
-    while (!in.atEnd()) {
-        QString line = in.readLine();
-        QStringList fields = line.split(",");
-
-        if (fields.size() >= 5) {
-            addPatient(fields[0], fields[1], fields[2], fields[3], fields[4]);
-        }
-    }
-
-    file.close();
-    currentFilePath = fileName;
 }
