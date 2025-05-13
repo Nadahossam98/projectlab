@@ -7,7 +7,6 @@
 #include <QJsonObject>
 #include <QJsonArray>
 
-// Forward declaration
 namespace Ui {
 class AppointmentForm;
 }
@@ -65,7 +64,11 @@ private:
         QString lastName;
         QString specialty;
 
-        QString fullName() const { return firstName + " " + lastName + " (" + specialty + ")"; }
+        QString fullName() const {
+            if (lastName.isEmpty() && specialty.isEmpty())
+                return firstName;  // Username only
+            return firstName + " " + lastName + " (" + specialty + ")";
+        }
 
         QJsonObject toJson() const {
             QJsonObject obj;
@@ -122,13 +125,12 @@ private:
 
     void initializeSampleData();
     void loadPatients();
-    void loadDoctors();
     bool isTimeSlotAvailable(int doctorId, const QDateTime& dateTime) const;
     QList<QDateTime> getAvailableTimeSlots(int doctorId, const QDate& date) const;
 
-    // New methods for file persistence
     void saveToFile();
     void loadFromFile();
 };
 
 #endif // APPOINTMENTFORM_H
+

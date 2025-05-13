@@ -59,6 +59,7 @@ void Dashboard::connectPatientRecords(PatientRecords* patientRecords)
 {
     if (!patientRecords) return;
 
+    // Connect the patientCountChanged signal to the updatePatientCount slot
     connect(patientRecords, &PatientRecords::patientCountChanged,
             this, &Dashboard::updatePatientCount);
 
@@ -106,7 +107,7 @@ void Dashboard::loadProfilePicture(const QString &username)
 
     m_profilePicLabel->setPixmap(
         pixmap.scaled(100, 100, Qt::KeepAspectRatio, Qt::SmoothTransformation)
-    );
+        );
 }
 
 void Dashboard::onChangeProfilePicture()
@@ -116,7 +117,7 @@ void Dashboard::onChangeProfilePicture()
         tr("Select Profile Picture"),
         "",
         tr("Images (*.png *.jpg *.jpeg *.bmp)")
-    );
+        );
     if (fileName.isEmpty()) return;
 
     QDir dir("profile_pics");

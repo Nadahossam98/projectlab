@@ -12,9 +12,37 @@
 #include <QPushButton>
 #include <QDateTime>
 #include <QTime>
+#include <QStandardPaths>
+#include <QDir>
+#include <QTextStream>
+#include <QDebug>
+
+// --- Helper: Load doctor usernames from users.txt ---
+QStringList getDoctorUsernamesFromFile(const QString &filePath)
+{
+    QStringList doctorUsernames;
+    QFile file(filePath);
+
+    if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        QTextStream in(&file);
+        while (!in.atEnd()) {
+            QString line = in.readLine().trimmed();
+            if (line.isEmpty()) continue;
+
+            QStringList parts = line.split(":");
+            if (parts.size() == 3 && parts[2].compare("Doctor", Qt::CaseInsensitive) == 0) {
+                doctorUsernames << parts[0];
+                qDebug() << "Loaded doctor username:" << parts[0];
+            }
+        }
+        file.close();
+    } else {
+        qWarning() << "Could not open users file:" << filePath;
+    }
+    return doctorUsernames;
+}
 
 // --- AppointmentForm Implementation ---
-
 AppointmentForm::AppointmentForm(QWidget *parent)
     : QWidget(parent),
     ui(new Ui::AppointmentForm),
@@ -27,7 +55,6 @@ AppointmentForm::AppointmentForm(QWidget *parent)
     ui->dateEdit->setMinimumDate(QDate::currentDate());
     ui->timeSlotComboBox->setEnabled(false);
 
-    // Load from file (or initialize sample data if file missing)
     loadFromFile();
     if (patients.isEmpty() || doctors.isEmpty()) {
         initializeSampleData();
@@ -35,7 +62,20 @@ AppointmentForm::AppointmentForm(QWidget *parent)
     }
 
     loadPatients();
-    loadDoctors();
+
+    // --- Load doctors from users.txt ---
+    ui->doctorComboBox->clear();
+    ui->doctorComboBox->addItem("Select Doctor", -1);
+
+    QStringList doctorNames = getDoctorUsernamesFromFile("users.txt");
+    if (doctorNames.isEmpty()) {
+        QMessageBox::warning(this, "Warning", "No doctor users found in users.txt.");
+    } else {
+        for (const QString &name : doctorNames) {
+            doctors.append({nextDoctorId++, name, "", "General"});
+            ui->doctorComboBox->addItem(name, nextDoctorId - 1);
+        }
+    }
 
     connect(ui->doctorComboBox, QOverload<int>::of(&QComboBox::currentIndexChanged),
             this, &AppointmentForm::on_doctorComboBox_currentIndexChanged);
@@ -86,10 +126,14 @@ void AppointmentForm::initializeSampleData() {
     patients.append({nextPatientId++, "Robert", "Johnson"});
     patients.append({nextPatientId++, "Emily", "Williams"});
 
-    doctors.append({nextDoctorId++, "Sarah", "Wilson", "Cardiology"});
-    doctors.append({nextDoctorId++, "Michael", "Brown", "Pediatrics"});
-    doctors.append({nextDoctorId++, "David", "Miller", "Neurology"});
-    doctors.append({nextDoctorId++, "Lisa", "Davis", "Dermatology"});
+    QStringList doctorNames = getDoctorUsernamesFromFile("users.txt");
+    for (const QString &username : doctorNames)
+        doctors.append({nextDoctorId++, username, "", "General"});
+
+    if (doctors.isEmpty()) {
+        doctors.append({nextDoctorId++, "Sarah", "Wilson", "Cardiology"});
+        doctors.append({nextDoctorId++, "Michael", "Brown", "Pediatrics"});
+    }
 
     QDateTime now = QDateTime::currentDateTime();
     appointments.append({nextAppointmentId++, 1, 1, now.addDays(1).addSecs(9*3600), "Heart checkup"});
@@ -99,18 +143,31 @@ void AppointmentForm::initializeSampleData() {
 
 void AppointmentForm::loadPatients() {
     if (!ui || !ui->patientComboBox) return;
+
     ui->patientComboBox->clear();
     ui->patientComboBox->addItem("Select Patient", -1);
-    for (const Patient& patient : patients)
-        ui->patientComboBox->addItem(patient.fullName(), patient.id);
-}
 
-void AppointmentForm::loadDoctors() {
-    if (!ui || !ui->doctorComboBox) return;
-    ui->doctorComboBox->clear();
-    ui->doctorComboBox->addItem("Select Doctor", -1);
-    for (const Doctor& doctor : doctors)
-        ui->doctorComboBox->addItem(doctor.fullName(), doctor.id);
+    QFile file("C:/Users/osama/Downloads/projectlab/projectlab/patient_records.csv");
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        qWarning("Could not open patient_records.csv");
+        return;
+    }
+
+    QTextStream in(&file);
+    while (!in.atEnd()) {
+        QString line = in.readLine();
+        QStringList fields = line.split(",");
+
+        if (fields.size() >= 2) {
+            bool ok = false;
+            int id = fields[0].toInt(&ok);
+            QString name = fields[1].trimmed();
+            if (ok && !name.isEmpty()) {
+                ui->patientComboBox->addItem(name, id);
+            }
+        }
+    }
+    file.close();
 }
 
 void AppointmentForm::updateTimeSlots() {
@@ -172,8 +229,6 @@ void AppointmentForm::on_saveButton_clicked() {
         return;
     }
     if (!isTimeSlotAvailable(doctorId, dateTime)) {
-        QMessageBox::warning(this, "Time Slot Unavailable",
-                             "The selected time slot is no longer available. Please choose another time.");
         updateTimeSlots();
         return;
     }
@@ -199,37 +254,43 @@ void AppointmentForm::validateForm() {
         ui->saveButton->setEnabled(isValid);
 }
 
-// --- File Persistence ---
-
 void AppointmentForm::saveToFile() {
-    QFile file("appointments.json");
-    if (!file.open(QIODevice::WriteOnly)) return;
+    QFile file("appointments.csv");
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        QMessageBox::critical(this, "File Error", "Unable to save appointments to CSV.");
+        return;
+    }
 
-    QJsonObject root;
-    QJsonArray patientsArray, doctorsArray, appointmentsArray;
+    QTextStream out(&file);
+    out << "Appointment ID,Patient ID,Doctor ID,DateTime,Reason\n";
 
-    for (const Patient &p : patients) patientsArray.append(p.toJson());
-    for (const Doctor &d : doctors) doctorsArray.append(d.toJson());
-    for (const Appointment &a : appointments) appointmentsArray.append(a.toJson());
+    for (const Appointment &a : appointments) {
+        QString cleanedReason = a.reason;
+        cleanedReason.replace(",", ";");
+        out << a.id << "," << a.patientId << "," << a.doctorId << ","
+            << a.dateTime.toString(Qt::ISODate) << "," << cleanedReason << "\n";
+    }
 
-    root["patients"] = patientsArray;
-    root["doctors"] = doctorsArray;
-    root["appointments"] = appointmentsArray;
-    root["nextPatientId"] = nextPatientId;
-    root["nextDoctorId"] = nextDoctorId;
-    root["nextAppointmentId"] = nextAppointmentId;
-
-    QJsonDocument doc(root);
-    file.write(doc.toJson());
     file.close();
 }
 
 void AppointmentForm::loadFromFile() {
     QFile file("appointments.json");
-    if (!file.open(QIODevice::ReadOnly)) return;
+    if (!file.open(QIODevice::ReadOnly)) {
+        qWarning("Could not open appointments.json for reading. Initializing sample data.");
+        return;
+    }
 
     QByteArray data = file.readAll();
-    QJsonDocument doc = QJsonDocument::fromJson(data);
+    QJsonParseError parseError;
+    QJsonDocument doc = QJsonDocument::fromJson(data, &parseError);
+    if (parseError.error != QJsonParseError::NoError) {
+        qWarning() << "JSON parse error:" << parseError.errorString();
+        QMessageBox::warning(this, "Data Error", "Corrupted appointment file. Initializing default data.");
+        file.close();
+        return;
+    }
+
     QJsonObject root = doc.object();
 
     patients.clear();

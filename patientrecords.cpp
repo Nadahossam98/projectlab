@@ -11,6 +11,8 @@
 #include <QHeaderView>
 #include <QRegularExpression>
 
+// --- PatientRecords Implementation ---
+
 PatientRecords::PatientRecords(QWidget *parent)
     : QWidget(parent),
     ui(new Ui::PatientRecords),
@@ -47,7 +49,7 @@ void PatientRecords::setAccessLevel(const QString &role)
 {
     currentUserRole = role;
     bool canEdit = (role == "Admin" || role == "Doctor");
-    bool canDelete = (role == "Admin");
+    bool canDelete = (role == "Admin" || role == "Doctor");
 
     ui->addButton->setEnabled(canEdit);
     ui->editButton->setEnabled(canEdit);
@@ -75,7 +77,7 @@ void PatientRecords::setupTableView()
 
 QString PatientRecords::getDataFilePath() const
 {
-    return QDir::homePath() + "/patient_records.csv";
+    return "C:/Users/osama/Downloads/projectlab/projectlab/patient_records.csv";
 }
 
 void PatientRecords::loadDataFromFile()
@@ -260,4 +262,29 @@ void PatientRecords::onDeleteClicked()
 void PatientRecords::onBackClicked()
 {
     emit backToDashboard();
+}
+
+void PatientRecords::on_pushButton_clicked()
+{
+    if (model->rowCount() == 0) {
+        showErrorMessage("No patients to save");
+        return;
+    }
+
+    // Get the last row in the model
+    int lastRow = model->rowCount() - 1;
+    QStringList rowData;
+    for (int col = 0; col < model->columnCount(); ++col) {
+        QStandardItem* item = model->item(lastRow, col);
+        rowData << (item ? item->text() : "");
+    }
+
+    QFile file(getDataFilePath());
+    if (file.open(QIODevice::Append | QIODevice::Text)) {
+        QTextStream out(&file);
+        out << rowData.join(",") << "\n";
+        file.close();
+    } else {
+        showErrorMessage("Could not append new patient to the file");
+    }
 }

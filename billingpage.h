@@ -3,6 +3,7 @@
 
 #include <QWidget>
 #include <QTableWidgetItem>
+#include <QTextStream>  // Needed for QTextStream used in writeBillToStream
 
 namespace Ui {
 class BillingPage;
@@ -33,6 +34,7 @@ private:
     bool validatePaymentDetails();
     void updateBillStatus(int row, const QString &status);
     void clearForm();
+    void writeBillToStream(QTextStream &out, int row); // <- Add this line
 };
 
 #endif // BILLINGPAGE_H
